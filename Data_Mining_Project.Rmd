@@ -1,0 +1,405 @@
+---
+title: "Data Mining"
+author: "Jake Harvey"
+date: "2025-02-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(kableExtra)
+library(lubridate)
+library(ggplot2)
+library(doParallel)
+library(foreach)
+```
+
+# Project Part 1
+
+# 1.
+
+## Electric Vehicle Population in Washington
+
+```{r echo = FALSE, results='markdown'}
+df = read.csv("C:\\Users\\jphar\\OneDrive\\Documents\\Dr. Jacobs\\DATA-MINING\\Electric_Vehicle_Population_Data.csv")
+kable(head(df))
+```
+
+# 2.
+
+## A. 
+
+I am going to use the Electric Range for this first part. While looking at this data I discovered that instead of NA they use 0 to show no information, so I will do the equations with 0's included and excluded.
+
+Excluding 0
+
+```{r echo = FALSE, results='markdown'}
+no.zeros <- subset(df, Electric.Range > 0)
+
+kable(head(no.zeros))
+```
+
+### Mean
+
+With 0
+
+```{r echo = FALSE, results='markdown'}
+
+result.mean <- mean(df$Electric.Range, na.rm = TRUE)
+
+print(result.mean)
+```
+
+With the amount of zeros that are in this dataset, it is no wonder that the mean is this low.
+
+Without 0
+
+```{r echo = FALSE, results='markdown'}
+
+result.mean <- mean(no.zeros$Electric.Range, na.rm = TRUE)
+
+print(result.mean)
+```
+
+Now that the zeros are gone, a more reasonable mean remains. The ranges are not even, with the majority of them falling below 100 miles. It is still able to overcome 100 with the remaining cars that are above it.
+
+### Standard Deviation
+
+With 0
+
+```{r echo = FALSE, results='markdown'}
+
+SD<-sd(df$Electric.Range, na.rm = TRUE)
+
+print(SD)
+```
+
+The standard deviation is a decent range, especially because of the amount of zeros that are in this set. When you think about how far electric vehicles have come from the beginning, it makes sense that the more we advance, the longer the range will be.
+
+Without 0
+
+```{r echo = FALSE, results='markdown'}
+
+SD<-sd(no.zeros$Electric.Range, na.rm = TRUE)
+
+print(SD)
+```
+
+This seems like a more reasonable answer, because all of the zeros are out of the equation.
+
+### Five Number Summary
+
+With 0
+
+```{r echo = FALSE, results='markdown'}
+
+FNS <- fivenum(df$Electric.Range, na.rm = TRUE)
+
+print(FNS)
+```
+
+The five number summary is right for this dataset, but it only shows 0, 39, and 337.
+
+Without 0
+
+```{r echo = FALSE, results='markdown'}
+
+FNS <- fivenum(no.zeros$Electric.Range, na.rm = TRUE)
+
+print(FNS)
+```
+
+This is a more reasonable response, but because we are using the data without zeros the first number is 6 instead of 0.
+
+### Histogram
+
+With 0
+
+```{r echo = FALSE, results='markdown'}
+h <- ggplot(df, aes(x = Electric.Range)) +
+  geom_histogram(binwidth = 5, fill = "#ff5200", color = "black") +
+  labs(title = "Histogram of Electric Ranges", x = "Elecric Ranges", y = "Frequency") +
+  theme_minimal()
+
+print(h)
+```
+
+Yeah, I was unsure how many zeros were in this, but this just goes to show the difference in information.
+
+Without 0
+
+```{r echo = FALSE, results='markdown'}
+h <- ggplot(no.zeros, aes(x = Electric.Range)) +
+  geom_histogram(binwidth = 5, fill = "#ff5200", color = "black") +
+  labs(title = "Histogram of Electric Ranges", x = "Electric Ranges", y = "Frequency") +
+  theme_minimal()
+
+print(h)
+```
+
+Now that I can actually see the graph, the information is somewhat skewed to the left with more cars having a lower range. A theory on this is that the higher the range, the more expensive the car is.
+
+### Box Plot
+
+With 0
+
+```{r echo = FALSE, results='markdown'}
+b <- ggplot(df, aes(y = Electric.Range)) +
+  geom_boxplot(fill = "#ff5200", color = "black") +
+  labs(title = "Box Plot of Electric Ranges", y = "Electric Ranges") +
+  theme_minimal()
+
+print(b)
+```
+
+If the number is not 0, it is an outlier in this graph.
+
+Without 0
+
+```{r echo = FALSE, results='markdown'}
+b <- ggplot(no.zeros, aes(y = Electric.Range)) +
+  geom_boxplot(fill = "#ff5200", color = "black") +
+  labs(title = "Box Plot of Electric Ranges", y = "Electric Ranges") +
+  theme_minimal()
+
+print(b)
+```
+
+This box plot is more reasonable, but I feel like some information is missing because I believe that there are some entries that reach the 300s, and they should be outliers.
+
+## B.
+
+With 0
+
+```{r}
+cc <- cor(df$Model.Year, df$Electric.Range)
+
+print(cc)
+```
+
+```{r echo = FALSE, results='markdown'}
+ggplot(df, aes(x = Model.Year, y = Electric.Range)) +
+  geom_jitter(alpha = 0.7, width = 0.3, height = 0) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Electric Range vs. Model Year",
+       x = "Model Year",
+       y = "Electric Range (miles)") +
+  theme_minimal()
+```
+
+With all of the zeros, it is unable to fine a correlation, but by looking at the graph it seems that on average the newer the car, the better the range.
+
+Without 0
+
+```{r}
+cc <- cor(no.zeros$Model.Year, no.zeros$Electric.Range)
+
+print(cc)
+```
+
+```{r echo = FALSE, results='markdown'}
+ggplot(no.zeros, aes(x = Model.Year, y = Electric.Range)) +
+  geom_jitter(alpha = 0.7, width = 0.3, height = 0) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Electric Range vs. Model Year",
+       x = "Model Year",
+       y = "Electric Range (miles)") +
+  theme_minimal()
+```
+
+Well, the correlation coefficient kinda disproves my earlier statement, but only on a small scale.
+
+## C. 
+
+### Frequency
+
+```{r echo = FALSE, results='markdown'}
+frequency_table <- df |>
+  group_by(Make) |>
+  summarise(Frequency = n()) |>
+  arrange(desc(Frequency))
+
+kable(head(frequency_table, 10))
+```
+
+The most frequent make of electric vehicle is Tesla. These are the top 10.
+
+### Relative Frequency
+
+```{r echo = FALSE, results='markdown'}
+relative_frequency_table <- df |>
+  group_by(Make) |>
+  summarise(Relative.Frequency = n() / nrow(df)) |>
+  arrange(desc(Relative.Frequency))
+
+kable(relative_frequency_table, format = 'markdown')
+```
+
+The difference between the first and second car is about 80000, so it makes sense that the relative frequency has such a big difference between them.
+
+## D.
+
+```{r echo = FALSE, results='markdown'}
+two_way_table <- table(df$Make, df$Electric.Vehicle.Type)
+
+two_way_df <- as.data.frame(two_way_table)
+colnames(two_way_df) <- c("Make", "Electric Vehicle Type", "Frequency")
+
+total_vehicles <- sum(two_way_df$Frequency)
+
+two_way_df$Relative_Frequency <- two_way_df$Frequency / total_vehicles
+
+sorted_two_way_df <- two_way_df |>
+  arrange(desc(Frequency))
+
+kable(sorted_two_way_df)
+```
+
+The cars are divided into their respective types, and the the frequency and relative frequency is given. Some of the proportions that are here are that there are more battery electric vehicles than plug-in or hybrids.
+
+## E.
+
+```{r echo = FALSE, results='markdown'}
+ggplot(no.zeros, aes(x = Electric.Vehicle.Type, y = Electric.Range)) +
+  geom_boxplot(fill = "#ff5200", color = "black") +
+  labs(title = "Electric Range by Electric Vehicle Type",
+       x = "Electric Vehicle Type",
+       y = "Electric Range (miles)") +
+  theme_minimal()
+```
+
+The boxplot shows the difference between BEV and PHEV, and just by looking at it the BEV category have a naturally higher range.
+
+```{r results='markdown'}
+ss <- no.zeros |>
+  group_by(Electric.Vehicle.Type) |>
+  summarise(
+    Mean = mean(Electric.Range),
+    SD = sd(Electric.Range),
+    Median = median(Electric.Range),
+    IQR = IQR(Electric.Range),
+    Min = min(Electric.Range),
+    Max = max(Electric.Range)
+  )
+
+kable(ss)
+```
+
+The summary statistics prove the previous statement by showing the math behind it.
+
+## F.
+
+```{r results='markdown'}
+ggplot(no.zeros, aes(x = Electric.Range, fill = Electric.Vehicle.Type)) +
+  geom_density(alpha = 0.7) +
+  labs(title = "Density Plot of Electric Range by Electric Vehicle Type",
+       x = "Electric Range (miles)",
+       y = "Density",
+       fill = "Electric Vehicle Type") +
+  theme_minimal()
+```
+
+The density plot shows that it is more common for there to be Plug-in Hybrids that range between 0 and 50 miles, and for Battery vehicles to be more spread about, with the majority of them having a range of a little over 200 miles.
+
+# 3.
+
+The dataset that I found is the Electric Car Population in the State of Washington. I found it on data.gov, after searching through several pages of data. I mostly used the type of car, make, model year, and electric ranges for the questions. I did have to modify the data just a little, because NA's are not in this document, and they replaced them with 0 instead. I did test with both just to see the difference.
+
+Link: https://catalog.data.gov/dataset/electric-vehicle-population-data
+
+The conclusion that I can come up with from this data is that on average, Battery Electric Vehicles have a higher range, in miles, then Plug-in Hybrid Electric Vehicles. The reasons for this can amount to multiple reasons, but the most common vehicles are PHEV. I believe that it is cheaper to own one of these vehicles, and that is the reason for it, but that is just my theory.
+
+
+# Projet Part 2
+
+I am going to go ahead and make a df that removes 0's, because they are the place holders for Null
+
+```{r}
+df_clean <- df[df$Electric.Range != 0, ]
+```
+
+# 2.
+
+## A. 
+
+```{r echo=FALSE}
+simple_regression <- lm(Electric.Range ~ Model.Year, df_clean)
+
+plot(df_clean$Model.Year, df_clean$Electric.Range, 
+     main = "Electric Range vs. Model Year",
+     xlab = "Model Year",
+     ylab = "Electric Range (miles)",
+     pch = 16, col = "#ff5200")
+abline(simple_regression, col = "black", lwd = 2)
+```
+
+```{r echo=FALSE}
+summary(simple_regression)
+```
+
+Well by looking at this data, and guessing on how technology advances as the future goes along, I would've thought that as the years go up the range goes up. Looking at the graph I am showed differently. There is a negative correlation, and I am not too sure as to why that would be other than there being a super dense population of low mileage newer cars. If the dataset had provided the MSRP, and not just left the column blank, perhaps I could have made a correlation and regression between range and MSRP.
+
+## B.
+
+```{r echo=FALSE}
+multiple_regression <- lm(Electric.Range ~ Model.Year + Legislative.District, df_clean)
+
+plot(df_clean$Model.Year, df_clean$Electric.Range, 
+     main = "Electric Range vs. Model Year / Legislative District",
+     xlab = "Model Year",
+     ylab = "Electric Range (miles)",
+     pch = 16, col = "#ff5200")
+abline(multiple_regression, col = "black", lwd = 2)
+```
+
+```{r echo=FALSE}
+summary(multiple_regression)
+```
+
+This doesn't look any different, which makes me feel that there was no part that was changed. The MSRP column might've been more useful if the column actually had data within it. Also, by using the legislative district it does not actually benefit me in this situation. The summary is almost the same as the previous.
+
+## C.
+
+```{r echo=FALSE}
+interaction_model <- lm(Electric.Range ~ Model.Year * Legislative.District, df_clean)
+
+ggplot(df_clean, aes(x = Model.Year, y = Electric.Range, color = factor(Legislative.District))) +
+  geom_point() +
+  geom_smooth(method = "lm", aes(group = Legislative.District), se = FALSE) +
+  labs(title = "Electric Range vs. Model Year with Interaction",
+       x = "Model Year",
+       y = "Electric Range (miles)",
+       color = "Legislative District")
+```
+
+```{r echo=FALSE}
+summary(interaction_model)
+```
+
+This graph is showing more than I was getting previously, but it is a little crowded.I am a little surprised that the legislative districts actually had an effect on the regression. My guess is that the legislative districts all vary in size, and that some of the lower mileage cars that are in them are not worse than older ones, but are instead designed that way because the people that live within them do not have to drive nearly as far. Therefor they do not need a high mileage to drive them places. Another theory is that there are more charging ports that are readily available, and car manufacturers know that and decided to build cheaper, not better.
+
+## D.
+
+```{r}
+df_clean$Model_Year_Squared <- df_clean$Model.Year^2
+
+nonlinear_model <- lm(Electric.Range ~ Model.Year + Model_Year_Squared, data = df_clean)
+
+plot(df_clean$Model.Year, df_clean$Electric.Range, 
+     main = "Non-linear Regression: Electric Range vs. Model Year",
+     xlab = "Model Year",
+     ylab = "Electric Range (miles)",
+     pch = 16, col = "#ff5200")
+
+# Add the fitted curve
+curve(predict(nonlinear_model, newdata = data.frame(Model.Year = x, Model_Year_Squared = x^2)),
+      add = TRUE, col = "black", lwd = 2)
+```
+
+```{r echo=FALSE}
+summary(nonlinear_model)
+```
+
+Using the model years, I squared them to allow me to have a nonlinear regression. Looking at the graph it actually does not look that bad. I already know that there is a negative regression line, but when it is squared it actually shows the spike between 2018-2020 of the newer cars with higher mileage. I have started to notice that the further along in the project that I go, the less material I actually have to work with. 
+
