@@ -8,11 +8,16 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(dplyr)
 library(kableExtra)
 library(lubridate)
 library(ggplot2)
 library(doParallel)
 library(foreach)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(class)
 ```
 
 # Project Part 1
@@ -402,4 +407,118 @@ summary(nonlinear_model)
 ```
 
 Using the model years, I squared them to allow me to have a nonlinear regression. Looking at the graph it actually does not look that bad. I already know that there is a negative regression line, but when it is squared it actually shows the spike between 2018-2020 of the newer cars with higher mileage. I have started to notice that the further along in the project that I go, the less material I actually have to work with. 
+
+# Project Part 3
+
+# 2.
+
+## A.
+
+```{r echo=FALSE}
+set.seed(123) 
+df_sample <- df |> sample_n(250)
+```
+
+```{r echo=FALSE}
+df_sample <- df_sample |> select(Clean.Alternative.Fuel.Vehicle..CAFV..Eligibility, Make, Electric.Range)
+
+df_sample$Clean.Alternative.Fuel.Vehicle..CAFV..Eligibility <- as.factor(df_sample$Clean.Alternative.Fuel.Vehicle..CAFV..Eligibility)
+
+df_sample <- na.omit(df_sample)
+```
+
+```{r echo=FALSE}
+tree_model <- rpart(Clean.Alternative.Fuel.Vehicle..CAFV..Eligibility ~ Make + Electric.Range, 
+                    data = df_sample, 
+                    method = "class",
+                    control = rpart.control(maxdepth = 2))
+```
+
+```{r echo=FALSE}
+rpart.plot(tree_model, main = "Optimized Decision Tree - CAFV Eligibility", extra = 106)
+```
+
+```{r echo=FALSE}
+preds <- predict(tree_model, df_sample, type = "class")
+```
+
+```{r echo=FALSE}
+conf_matrix <- table(df_sample$Clean.Alternative.Fuel.Vehicle..CAFV..Eligibility, preds)
+print(conf_matrix)
+```
+
+Okay for some reason I kept having issues running my decision tree. After crashing multiple times, restarting my PC, and contemplating dropping out of school, I got some outside help that recommended I break all of my code up into segments and run them by themselves. This worked, and I was able to get a decision tree. Now there is some bias to this tree, because the majority of the cars have not been tested for battery range. If I were to exclude them, I might be able to learn a little bit more. The matrix further backs this. Also, I used 250 random rows from the df to speed up the process. 
+
+## B.
+
+```{r}
+train_control <- trainControl(method = "cv", number = 5)
+
+cv_model <- train(Clean.Alternative.Fuel.Vehicle..CAFV..Eligibility ~ ., 
+                  data = df_sample, 
+                  method = "rpart",
+                  trControl = train_control)
+
+print(cv_model)
+
+cv_results <- cv_model$resample
+print(cv_results)
+```
+
+This ran so much quicker, and almost has perfect accuracy. Fold 5 is where it drops to 96% accuracy, which is still really good.The reason for this accuracy could be because of the previously stated bias with most cars falling into the same category.
+
+## C.
+
+```{r echo=FALSE}
+set.seed(123)
+df_sample <- df |> sample_n(250)
+
+df_sample <- df_sample |> select(Clean.Alternative.Fuel.Vehicle..CAFV..Eligibility, Make, Model, Electric.Range)
+
+df_sample$Clean.Alternative.Fuel.Vehicle..CAFV..Eligibility <- as.factor(df_sample$Clean.Alternative.Fuel.Vehicle..CAFV..Eligibility)
+```
+
+```{r echo=FALSE}
+df_sample$Make <- as.numeric(as.factor(df_sample$Make))
+df_sample$Model <- as.numeric(as.factor(df_sample$Model))
+df_sample$Electric.Range <- as.numeric(df_sample$Electric.Range)
+```
+
+```{r echo=FALSE}
+set.seed(123)
+splitIndex <- createDataPartition(df_sample$Clean.Alternative.Fuel.Vehicle..CAFV..Eligibility, p = 0.7, list = FALSE)
+trainData <- df_sample[splitIndex, ]
+testData <- df_sample[-splitIndex, ]
+```
+
+```{r}
+knn_preds <- knn(train = trainData[, -1], 
+                 test = testData[, -1], 
+                 cl = trainData$Clean.Alternative.Fuel.Vehicle..CAFV..Eligibility, 
+                 k = 5)
+```
+
+```{r}
+conf_matrix_knn <- confusionMatrix(knn_preds, testData$Clean.Alternative.Fuel.Vehicle..CAFV..Eligibility)
+print(conf_matrix_knn)
+```
+
+```{r}
+train_control <- trainControl(method = "cv", number = 5)
+
+knn_cv_model <- train(Clean.Alternative.Fuel.Vehicle..CAFV..Eligibility ~ ., 
+                      data = df_sample, 
+                      method = "knn",
+                      trControl = train_control)
+
+print(knn_cv_model)
+```
+
+I used KNN for the comparison, and the results are a little different than the decision tree but they are not supper far off. With a 95% and 96% accuracy, the models are very similar. Again, there could be some issues with the bias that just happens to be picked up on more by KNN, that is causing these high results, but they are still good none the less.
+
+
+
+
+
+
 
